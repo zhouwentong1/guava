@@ -765,6 +765,8 @@ public final class Preconditions {
    * @throws NullPointerException if {@code reference} is null
    */
   @CanIgnoreReturnValue
+  // 这种代码中频繁使用了 @NotNull,@Nullable，@CanIgnoreReturnValue 等，强烈提高了代码可读性
+  // 因为这种提示内容之前是在注释里面提供的，但是一旦上升到了注解里，调用方看到并得到有效信息的成功率就更高了
   public static <T> T checkNotNull(T reference) {
     if (reference == null) {
       throw new NullPointerException();

@@ -235,6 +235,12 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   /**
    * Creates a new, empty map with the specified strategy, initial capacity and concurrency level.
    */
+
+  /**
+   * 从 builder 中获取对应的配置参数
+   * @param builder
+   * @param loader
+   */
   LocalCache(
       CacheBuilder<? super K, ? super V> builder, @Nullable CacheLoader<? super K, V> loader) {
     concurrencyLevel = Math.min(builder.getConcurrencyLevel(), MAX_SEGMENTS);
@@ -288,15 +294,21 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       ++segmentCapacity;
     }
 
+    // 找到段 size，大于段初始容量的最小的 2 的次数
     int segmentSize = 1;
     while (segmentSize < segmentCapacity) {
       segmentSize <<= 1;
     }
 
+
+
+    // 权重如何赋值的？能否根据每一个值去赋值？
     if (evictsBySize()) {
       // Ensure sum of segment max weights = overall max weights
       long maxSegmentWeight = maxWeight / segmentCount + 1;
       long remainder = maxWeight % segmentCount;
+      // 只是在属性上 guava 使用 this 关键字，但是在方法上，很少使用
+      // this 关键字显示声明的原因是什么？可读性吗，标识该字段是当前属性的吗
       for (int i = 0; i < this.segments.length; ++i) {
         if (i == remainder) {
           maxSegmentWeight--;
@@ -4149,6 +4161,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return (result != null) ? result : defaultValue;
   }
 
+  // 分段获取
   V get(K key, CacheLoader<? super K, V> loader) throws ExecutionException {
     int hash = hash(checkNotNull(key));
     return segmentFor(hash).get(key, hash, loader);
@@ -5111,7 +5124,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     @Override
     public CacheStats stats() {
       SimpleStatsCounter aggregator = new SimpleStatsCounter();
+      // 在整体模块上增加
       aggregator.incrementBy(localCache.globalStatsCounter);
+      // 具体到某一个段上的计数增加
       for (Segment<K, V> segment : localCache.segments) {
         aggregator.incrementBy(segment.statsCounter);
       }

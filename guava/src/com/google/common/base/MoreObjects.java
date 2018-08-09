@@ -52,6 +52,7 @@ public final class MoreObjects {
    * @throws NullPointerException if both {@code first} and {@code second} are null
    * @since 18.0 (since 3.0 as {@code Objects.firstNonNull()}).
    */
+  // 找到第一个不为空的参数，如果两个都为空，则抛出异常
   public static <T> T firstNonNull(@Nullable T first, @Nullable T second) {
     return first != null ? first : checkNotNull(second);
   }

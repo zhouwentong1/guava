@@ -144,11 +144,16 @@ import javax.annotation.CheckReturnValue;
  */
 @GwtCompatible(emulated = true)
 public final class CacheBuilder<K, V> {
+  // 默认初始化大小
   private static final int DEFAULT_INITIAL_CAPACITY = 16;
+  // 默认并发水平
   private static final int DEFAULT_CONCURRENCY_LEVEL = 4;
+  // 默认过期时间
   private static final int DEFAULT_EXPIRATION_NANOS = 0;
+  // 默认刷新时间
   private static final int DEFAULT_REFRESH_NANOS = 0;
 
+  // 默认为空的状态统计类
   static final Supplier<? extends StatsCounter> NULL_STATS_COUNTER =
       Suppliers.ofInstance(
           new StatsCounter() {
@@ -174,14 +179,11 @@ public final class CacheBuilder<K, V> {
           });
   static final CacheStats EMPTY_STATS = new CacheStats(0, 0, 0, 0, 0, 0);
 
+  // 简单实现的状态统计类
   static final Supplier<StatsCounter> CACHE_STATS_COUNTER =
-      new Supplier<StatsCounter>() {
-        @Override
-        public StatsCounter get() {
-          return new SimpleStatsCounter();
-        }
-      };
+          SimpleStatsCounter::new;
 
+  // 默认的移除 Listener，默认什么都不做
   enum NullListener implements RemovalListener<Object, Object> {
     INSTANCE;
 
@@ -189,6 +191,7 @@ public final class CacheBuilder<K, V> {
     public void onRemoval(RemovalNotification<Object, Object> notification) {}
   }
 
+  // 默认权重，默认都是 1
   enum OneWeigher implements Weigher<Object, Object> {
     INSTANCE;
 

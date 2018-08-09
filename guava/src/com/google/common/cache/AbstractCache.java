@@ -198,6 +198,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
    *
    * @since 10.0
    */
+  // 统计数据器，用来保存命中率等信息
   public static final class SimpleStatsCounter implements StatsCounter {
     private final LongAddable hitCount = LongAddables.create();
     private final LongAddable missCount = LongAddables.create();
