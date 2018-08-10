@@ -464,7 +464,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new StrongAccessEntry<K, V>(key, hash, next);
+        return new StrongAccessEntry<>(key, hash, next);
       }
 
       @Override
@@ -479,7 +479,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new StrongWriteEntry<K, V>(key, hash, next);
+        return new StrongWriteEntry<>(key, hash, next);
       }
 
       @Override
@@ -494,7 +494,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new StrongAccessWriteEntry<K, V>(key, hash, next);
+        return new StrongAccessWriteEntry<>(key, hash, next);
       }
 
       @Override
@@ -510,14 +510,14 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new WeakEntry<K, V>(segment.keyReferenceQueue, key, hash, next);
+        return new WeakEntry<>(segment.keyReferenceQueue, key, hash, next);
       }
     },
     WEAK_ACCESS {
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new WeakAccessEntry<K, V>(segment.keyReferenceQueue, key, hash, next);
+        return new WeakAccessEntry<>(segment.keyReferenceQueue, key, hash, next);
       }
 
       @Override
@@ -532,7 +532,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new WeakWriteEntry<K, V>(segment.keyReferenceQueue, key, hash, next);
+        return new WeakWriteEntry<>(segment.keyReferenceQueue, key, hash, next);
       }
 
       @Override
@@ -547,7 +547,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       @Override
       <K, V> ReferenceEntry<K, V> newEntry(
           Segment<K, V> segment, K key, int hash, @Nullable ReferenceEntry<K, V> next) {
-        return new WeakAccessWriteEntry<K, V>(segment.keyReferenceQueue, key, hash, next);
+        return new WeakAccessWriteEntry<>(segment.keyReferenceQueue, key, hash, next);
       }
 
       @Override
@@ -811,6 +811,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     /**
      * Returns the time that this entry was last accessed, in ns.
      */
+    // 尽量使用原生类型
     long getAccessTime();
 
     /**
@@ -1994,6 +1995,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
    * opportunistically, just to simplify some locking and avoid separate construction.
    */
   @SuppressWarnings("serial") // This class is never serialized.
+  // Segment 类通过集成 ReentrantLock 实现段锁优化
+  // 在 jdk 设计过程中，通过 modCount 和 count 类保持线程安全。
   static class Segment<K, V> extends ReentrantLock {
 
     /*
@@ -4085,6 +4088,15 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
   // ConcurrentMap methods
 
+  // 判断是否为空
+
+  /**
+   * 分两步实现。
+   * 第一步：在每一个段里检查 count，如果 count 不为 0，证明有数据，如果为 0，记录 modCount
+   * 第二步：在每一个段里对 modCount 递减，用来比对当前的 modCount 和 之前的 modCount 是否相同，如果相同，则认为没有被修改，如果不同，则认为被修改过了
+   * 不能只有第一步，因为在检查第一步的同时，可能会并发地对检查过的 segments 操作，所以需要再次检查一遍，当然第二次检查也可能出现第一次的情况，只能尽量避免了。
+   * @return
+   */
   @Override
   public boolean isEmpty() {
     /*
@@ -4103,7 +4115,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       sum += segments[i].modCount;
     }
 
-    if (sum != 0L) { // recheck unless no modifications
+    // recheck unless no modifications
+    if (sum != 0L) {
       for (int i = 0; i < segments.length; ++i) {
         if (segments[i].count != 0) {
           return false;
